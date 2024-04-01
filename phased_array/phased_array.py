@@ -1,6 +1,12 @@
+import typing
+import numpy as np
+
+# a phase pattern; given (θ, ϕ), return the power in linear units of the emitted energy
+Pattern = typing.Callable[[float, float], float]
+
 class Element:
     """An array element"""
-    def __init__(self, x, y, z, pattern):
+    def __init__(self, x: float, y: float, z: float, pattern: Pattern):
         self.x = x
         self.y = y
         self.z = z
@@ -10,15 +16,25 @@ class PhasedArray:
     """
     A completely arbitrary phased array antenna.
 
-    .. math::
-
-        a = 4
-
     """
 
-    def __init__(self, elements):
+    def __init__(self, elements: list[Element]):
         self._elements = elements
-        self._element
+        x = []
+        y = []
+        z = []
+        patterns = []
+        for e in  elements:
+            x.append(e.x)
+            y.append(e.y)
+            z.append(e.z)
+            patterns.append(e.pattern)
+
+        self.x = np.array(x)
+        self.y = np.array(y)
+        self.z = np.array(z)
+        self.positions = np.array([self.x, self.y, self.z])
+
 
     def array_factor(self, wavelength, weights, theta, phi):
         r"""Calculate the array factor of an array.
@@ -28,16 +44,41 @@ class PhasedArray:
 
         .. math::
 
+           \gdef\rhat{\pmb{\hat{r}}}
+           \gdef\xhat{\pmb{\hat{x}}}
+           \gdef\yhat{\pmb{\hat{y}}}
+           \gdef\zhat{\pmb{\hat{z}}}
 
-            \textbf{F} = 4
-            \tag{1.50}
+           F(θ, ϕ) = \sum a_i \exp(jk \pmb{r}_i \cdot \rhat)
 
+        where
+
+        .. math::
+
+            \begin{align*}
+            k         &= 2 \frac{π}{λ} & \text {wave number} \\
+            \rhat_0   &= \xhat u_0 + \yhat v_0 + \zhat \cos θ_0 & \text{direction of oncoming wave} \\
+            \pmb{r}_i &= \xhat x_i + \yhat y_i + \zhat z_i & \text{ the position of the $i$th element} \\
+            u         &= \sin {θ} \cos {ϕ}  & \text{direction cosine $u$} \\
+            v         &= \sin{θ} \sin{ϕ} & \text{direction cosine $v$}
+            \end{align*}
 
         """
-        if weights.shape != self._array_pos.shape:
+        if weights.shape != self.positions.shape:
             raise ValueError(
-                f"Invalid weights for array of shape {self._array_pos.shape}"
+                f"Invalid weights for array of shape {self.positions.shape}"
             )
+        a_i = weights
         λ = wavelength
         θ = theta
         ϕ = phi
+
+        u_0 = np.sin(θ) * np.cos(ϕ)
+        v_0 = np.sin(θ) * np.sin(ϕ)
+        k = 2 * np.pi / λ
+        rhat = np.array([u_0, v_0, np.cos(ϕ)])
+        r_i = self.positions
+
+        F = np.sum(a_i * np.exp(1j * k * np.dot(r_i, rhat)))
+        return F
+
