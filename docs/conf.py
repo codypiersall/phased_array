@@ -17,7 +17,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
-    "sphinx.ext.mathjax",
+    "sphinxcontrib.katex",
 ]
 
 templates_path = ['_templates']
