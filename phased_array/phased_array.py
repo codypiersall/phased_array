@@ -77,19 +77,24 @@ class PhasedArray:
             raise ValueError(
                 f"Invalid weights for array of shape {self.positions.shape}"
             )
-        a_i = weights
-        λ = wavelength
-        θ = theta
-        ϕ = phi
 
-        a_i = np.tile(a_i, [len(θ), 1])
+        a_i = np.asarray(weights)
+        λ = wavelength
+        θ = np.asarray(theta)
+        ϕ = np.asarray(phi)
+        orig_shape = θ.shape
+        θ = θ.ravel()
+        ϕ = ϕ.ravel()
+        a_i = a_i.ravel()
+
         u_0 = np.sin(θ) * np.cos(ϕ)
         v_0 = np.sin(θ) * np.sin(ϕ)
         k = 2 * np.pi / λ
-        rhat = np.array([u_0, v_0, np.cos(ϕ)])
-        r_i = self.positions
-        r_i_dot_rhat = r_i.T.dot(rhat)
-        F = np.sum(a_i @ np.exp(1j * k * r_i_dot_rhat), axis=0)
+        rhat = np.array([u_0, v_0, np.cos(θ)])
+        ri_dot_rhat = self.positions.T.dot(rhat)
+        phase = np.exp(1j * k * ri_dot_rhat)
+        F = a_i.dot(phase)
+        F.shape = orig_shape
         return F
 
     @classmethod
@@ -109,6 +114,9 @@ class PhasedArray:
 
     @classmethod
     def planar(cls, d_x, d_y, n_x, n_y):
+        """
+        Construct a Phased Array with 2D, planar, linear spaced elements.
+        """
         elements = []
         for i in range(n_x):
             for j in range(n_y):
