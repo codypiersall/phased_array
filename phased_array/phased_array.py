@@ -123,3 +123,11 @@ class PhasedArray:
                 element = Element(i * d_x, j * d_y, 0)
                 elements.append(element)
         return cls(elements)
+
+def uv_to_theta_phi(u, v):
+    θ = np.arcsin(np.sqrt(u**2 + v**2))
+    ϕ = np.arctan(v / u)
+    return θ, ϕ
+
+
+uv_to_θϕ = uv_to_theta_phi
