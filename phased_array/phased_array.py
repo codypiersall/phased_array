@@ -87,8 +87,8 @@ class PhasedArray:
         ϕ = ϕ.ravel()
         a_i = a_i.ravel()
 
-        u_0 = np.sin(θ) * np.cos(ϕ)
-        v_0 = np.sin(θ) * np.sin(ϕ)
+        u_0, v_0 = θϕ_to_uv(θ, ϕ)
+
         k = 2 * np.pi / λ
         rhat = np.array([u_0, v_0, np.cos(θ)])
         ri_dot_rhat = self.positions.T.dot(rhat)
@@ -124,10 +124,24 @@ class PhasedArray:
                 elements.append(element)
         return cls(elements)
 
-def uv_to_theta_phi(u, v):
+
+def uv_to_θϕ(u, v):
+    """Projection from uv plane to (θ, ϕ) angles"""
     θ = np.arcsin(np.sqrt(u**2 + v**2))
     ϕ = np.arctan(v / u)
     return θ, ϕ
 
 
-uv_to_θϕ = uv_to_theta_phi
+uv_to_theta_phi = uv_to_θφ
+
+
+def θϕ_to_uv(θ, ϕ):
+    """Projection from θ, ϕ to u,v"""
+    sin_θ = np.sin(θ)
+    u = sin_θ * np.cos(ϕ)
+    v = sin_θ * np.sin(ϕ)
+    return u, v
+
+
+def theta_phi_to_uv(theta, phi):
+    return θϕ_to_uv(theta, phi)
