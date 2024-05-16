@@ -128,7 +128,7 @@ class PhasedArray:
 def uv_to_θϕ(u, v):
     """Projection from uv plane to (θ, ϕ) angles"""
     θ = np.arcsin(np.sqrt(u**2 + v**2))
-    ϕ = np.arctan(v / u)
+    ϕ = np.arctan2(v, u)
     return θ, ϕ
 
 
@@ -145,3 +145,11 @@ def θϕ_to_uv(θ, ϕ):
 
 def theta_phi_to_uv(theta, phi):
     return θϕ_to_uv(theta, phi)
+
+
+def θϕr_to_xyz(θ, ϕ, r):
+    u, v = θϕ_to_uv(θ, ϕ)
+    x = r * u
+    y = r * v
+    z = r * np.cos(θ)
+    return x, y, z

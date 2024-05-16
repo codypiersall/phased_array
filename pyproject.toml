@@ -4,3 +4,6 @@ dynamic = ["version"]
 
 [tool.setuptools.dynamic]
 version = {attr = "phased_array._version.__version__"}
+
+# no specific settings, but this lets editors know to do stuff.
+[tool.black]
