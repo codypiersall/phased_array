@@ -45,6 +45,21 @@ class PhasedArray:
         self.z = np.array(z)
         self.positions = np.array([self.x, self.y, self.z])
 
+    def weights_at_θϕ(self, wavelength, θ, ϕ):
+        """Return the complex weights required at each element to point at θ and ϕ."""
+        # TODO Refactor so that this code isn't duplicated between here and array_factor
+        λ = wavelength
+        θ = np.asarray(θ).ravel()
+        ϕ = np.asarray(ϕ).ravel()
+
+        u_0, v_0 = θϕ_to_uv(θ, ϕ)
+
+        k = 2 * np.pi / λ
+        rhat = np.array([u_0, v_0, np.cos(θ)])
+        ri_dot_rhat = self.positions.T.dot(rhat)
+        phase = np.exp(1j * k * ri_dot_rhat)
+        return phase.conj()
+
     def array_factor(self, wavelength, weights, theta, phi):
         r"""Calculate the array factor of an array.
 
