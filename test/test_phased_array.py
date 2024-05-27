@@ -79,3 +79,38 @@ def test_θφr_to_xyz():
     assert np.allclose(
         θφr_to_xyz(np.pi / 4, -np.pi / 2, 1), (0, -np.sqrt(2) / 2, np.sqrt(2) / 2)
     )
+
+
+def test_array_factor_ula():
+    λ = 1
+    d = λ / 2.0
+    n = 8
+    arr = phased_array.PhasedArray.ula(d, n)
+    weights = np.ones(8)
+
+    assert arr.array_factor(λ, weights, 0, 0) == 8
+
+    assert np.allclose(arr.array_factor(λ, weights, np.pi / 2, 0), 0)
+    assert np.abs(arr.array_factor(λ, weights, np.radians(-14.477513), 0)) <= 1e-6
+
+    # make sure that when we generate weights to point at a specific angle, then we
+    # point there, we get the expected array factor.
+    a_i = arr.weights_at_θφ(λ, np.pi / 4, 0)
+    assert arr.array_factor(λ, a_i, np.pi / 4, 0) == 8
+
+
+def test_array_factor_planar():
+    λ = 1
+    dx = λ / 2.0
+    nx = 8
+    dy = dx
+    ny = nx
+    arr = phased_array.PhasedArray.planar(dx, dy, nx, ny)
+
+    weights = np.ones((8, 8))
+    assert arr.array_factor(λ, weights, 0, 0) == 64
+    assert abs(arr.array_factor(λ, weights, np.pi / 2, 0)) < 1e-14
+
+    weights = arr.weights_at_θφ(λ, np.pi / 4, np.pi / 6)
+    # assert weights.shape == (8, 8)
+    assert arr.array_factor(λ, weights, np.pi / 4, np.pi / 6) == 64

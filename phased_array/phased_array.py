@@ -4,6 +4,8 @@ import numpy as np
 # a phase pattern; given (θ, ϕ), return the power in linear units of the emitted energy
 Pattern = typing.Callable[[float, float], float]
 
+c = 3e8
+
 
 def uniform_pattern(theta: float, phi: float) -> float:
     """A uniform pattern; illuminates everything"""
@@ -45,20 +47,23 @@ class PhasedArray:
         self.z = np.array(z)
         self.positions = np.array([self.x, self.y, self.z])
 
+    def Δd_at_θϕ(self, θ, ϕ):
+        """Δd distance traveled to each element with angle of arrival θ, ϕ"""
+        # from PhasedArray Antenna Handbook, 3rd edititon
+        θ = np.asarray(θ).ravel()
+        ϕ = np.asarray(ϕ).ravel()
+        u_0, v_0 = θϕ_to_uv(θ, ϕ)
+        rhat = np.array([u_0, v_0, np.cos(θ)])
+        ri_dot_rhat = self.positions.T.dot(rhat)
+        return ri_dot_rhat
+
     def weights_at_θϕ(self, wavelength, θ, ϕ):
         """Return the complex weights required at each element to point at θ and ϕ."""
         # TODO Refactor so that this code isn't duplicated between here and array_factor
-        λ = wavelength
-        θ = np.asarray(θ).ravel()
-        ϕ = np.asarray(ϕ).ravel()
-
-        u_0, v_0 = θϕ_to_uv(θ, ϕ)
-
-        k = 2 * np.pi / λ
-        rhat = np.array([u_0, v_0, np.cos(θ)])
-        ri_dot_rhat = self.positions.T.dot(rhat)
-        phase = np.exp(1j * k * ri_dot_rhat)
-        return phase.conj()
+        Δd = self.Δd_at_θφ(θ, ϕ)
+        k = 2 * np.pi / wavelength
+        phase = np.exp(-1j * k * Δd)
+        return phase
 
     def array_factor(self, wavelength, weights, theta, phi):
         r"""Calculate the array factor of an array.
@@ -93,21 +98,14 @@ class PhasedArray:
                 f"Invalid weights for array of shape {self.positions.shape}"
             )
 
-        a_i = np.asarray(weights)
-        λ = wavelength
-        θ = np.asarray(theta)
-        ϕ = np.asarray(phi)
-        orig_shape = θ.shape
-        θ = θ.ravel()
-        ϕ = ϕ.ravel()
-        a_i = a_i.ravel()
+        theta = np.asarray(theta)
+        orig_shape = theta.shape
+        Δd = self.Δd_at_θφ(theta, phi)
 
-        u_0, v_0 = θϕ_to_uv(θ, ϕ)
+        k = 2 * np.pi / wavelength
+        phase = np.exp(1j * k * Δd)
 
-        k = 2 * np.pi / λ
-        rhat = np.array([u_0, v_0, np.cos(θ)])
-        ri_dot_rhat = self.positions.T.dot(rhat)
-        phase = np.exp(1j * k * ri_dot_rhat)
+        a_i = np.asarray(weights).ravel()
         F = a_i.dot(phase)
         F.shape = orig_shape
         return F
@@ -128,14 +126,20 @@ class PhasedArray:
         return cls(elements)
 
     @classmethod
-    def planar(cls, d_x, d_y, n_x, n_y):
+    def planar(cls, dx: float, dy: float, nx: int, ny: int):
         """
         Construct a Phased Array with 2D, planar, linear spaced elements.
+
+        Args:
+            dx: spacing between x elements in meters
+            dy: spacing between y elements in meters
+            nx: number of x elements
+            ny: number of x elements
         """
         elements = []
-        for i in range(n_x):
-            for j in range(n_y):
-                element = Element(i * d_x, j * d_y, 0)
+        for i in range(nx):
+            for j in range(ny):
+                element = Element(i * dx, j * dy, 0)
                 elements.append(element)
         return cls(elements)
 
