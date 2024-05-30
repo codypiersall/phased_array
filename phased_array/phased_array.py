@@ -5,13 +5,14 @@ import numpy.typing as npt
 
 # a phase pattern; given (θ, ϕ), return the power in linear units of the emitted energy
 Pattern = typing.Callable[[float, float], float]
-FloatArray = npt.NDArray[np.float64]
+FloatArray = typing.TypeVar("FloatArray", bound=npt.NDArray[np.float64] | float)
 
 c = 3e8
 
 
 def uniform_pattern(theta: float, phi: float) -> float:
     """A uniform pattern; illuminates everything"""
+    _, _ = theta, phi
     return 1.0
 
 
@@ -38,12 +39,12 @@ class PhasedArray:
 
     """
 
-    def __init__(self, elements: npt.NDArray[Element]):
+    def __init__(self, elements: typing.Iterable[Element]):
         self._elements = np.asarray(elements)
         self.positions = self._elements.squeeze()
         self._ri = self.positions.view("f4").reshape(self.positions.shape + (3,))
 
-    def Δd_at_θϕ(self, θ: FloatArray, ϕ: FloatArray) -> FloatArray:
+    def Δd_at_θϕ(self, theta: FloatArray, phi: FloatArray) -> FloatArray:
         """Δd distance traveled to each element with angle of arrival θ, ϕ
 
         Args:
@@ -57,8 +58,8 @@ class PhasedArray:
 
         """
         # from PhasedArray Antenna Handbook, 3rd edititon
-        θ = np.asarray(θ)
-        ϕ = np.asarray(ϕ)
+        θ = np.asarray(theta)
+        ϕ = np.asarray(phi)
         if θ.shape != ϕ.shape:
             raise ValueError("θ and ϕ shape must be identical")
 
