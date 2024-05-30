@@ -1,8 +1,11 @@
+import string
 import typing
 import numpy as np
+import numpy.typing as npt
 
 # a phase pattern; given (θ, ϕ), return the power in linear units of the emitted energy
 Pattern = typing.Callable[[float, float], float]
+FloatArray = npt.NDArray[np.float64]
 
 c = 3e8
 
@@ -23,6 +26,11 @@ class Element:
         self.z = z
         self.pattern = pattern
 
+    def __array__(self):
+        return np.array(
+            [(self.x, self.y, self.z)], dtype=[("x", "f4"), ("y", "f4"), ("z", "f4")]
+        )
+
 
 class PhasedArray:
     """
@@ -30,38 +38,44 @@ class PhasedArray:
 
     """
 
-    def __init__(self, elements: list[Element]):
-        self._elements = elements
-        x = []
-        y = []
-        z = []
-        patterns = []
-        for e in elements:
-            x.append(e.x)
-            y.append(e.y)
-            z.append(e.z)
-            patterns.append(e.pattern)
+    def __init__(self, elements: npt.NDArray[Element]):
+        self._elements = np.asarray(elements)
+        self.positions = self._elements.squeeze()
+        self._ri = self.positions.view("f4").reshape(self.positions.shape + (3,))
 
-        self.x = np.array(x)
-        self.y = np.array(y)
-        self.z = np.array(z)
-        self.positions = np.array([self.x, self.y, self.z])
+    def Δd_at_θϕ(self, θ: FloatArray, ϕ: FloatArray) -> FloatArray:
+        """Δd distance traveled to each element with angle of arrival θ, ϕ
 
-    def Δd_at_θϕ(self, θ, ϕ):
-        """Δd distance traveled to each element with angle of arrival θ, ϕ"""
+        Args:
+            θ: angle off of z axis
+            ϕ: angle clockwise from x axis
+
+        Returns:
+            The relative pathlength traveled for every element, for every θ and ϕ.
+            The returned shape of the array is `(*(self.positions) , *(θ.shape))`
+
+
+        """
         # from PhasedArray Antenna Handbook, 3rd edititon
-        θ = np.asarray(θ).ravel()
-        ϕ = np.asarray(ϕ).ravel()
+        θ = np.asarray(θ)
+        ϕ = np.asarray(ϕ)
+        if θ.shape != ϕ.shape:
+            raise ValueError("θ and ϕ shape must be identical")
+
+        θ_shape = θ.shape
+        θ = θ.ravel()
+        ϕ = ϕ.ravel()
         u_0, v_0 = θϕ_to_uv(θ, ϕ)
         rhat = np.array([u_0, v_0, np.cos(θ)])
-        ri_dot_rhat = self.positions.T.dot(rhat)
+        ri_dot_rhat = self._ri.dot(rhat)
+        ri_dot_rhat.shape = (*self.positions.shape, *θ_shape)
         return ri_dot_rhat
 
-    def weights_at_θϕ(self, wavelength, θ, ϕ):
+    def weights_at_θϕ(self, λ: float, θ: FloatArray, ϕ: FloatArray):
         """Return the complex weights required at each element to point at θ and ϕ."""
         # TODO Refactor so that this code isn't duplicated between here and array_factor
         Δd = self.Δd_at_θφ(θ, ϕ)
-        k = 2 * np.pi / wavelength
+        k = 2 * np.pi / λ
         phase = np.exp(-1j * k * Δd)
         return phase
 
@@ -93,25 +107,26 @@ class PhasedArray:
             \end{align*}
 
         """
-        if weights.size != self.positions.shape[-1]:
+        if weights.shape != self.positions.shape:
             raise ValueError(
-                f"Invalid weights for array of shape {self.positions.shape}"
+                f"Invalid weights for array of shape {self.positions.shape}: {weights.shape}"
             )
 
         theta = np.asarray(theta)
-        orig_shape = theta.shape
         Δd = self.Δd_at_θφ(theta, phi)
-
         k = 2 * np.pi / wavelength
         phase = np.exp(1j * k * Δd)
+        a_i = np.asarray(weights)
 
-        a_i = np.asarray(weights).ravel()
-        F = a_i.dot(phase)
-        F.shape = orig_shape
+        # like a dot product but works with whatever dimensionality we were given
+        # select the number of dimensions to sum across here
+        dims = string.ascii_lowercase[: a_i.ndim]
+
+        F = np.einsum(f"{dims},{dims}...", a_i, phase)
         return F
 
     @classmethod
-    def ula(cls, d, n):
+    def ula(cls, d: float, n: int):
         """Uniform Linear Array
 
         A 1D, linear phased array, with uniform spacing between elements
@@ -136,12 +151,13 @@ class PhasedArray:
             nx: number of x elements
             ny: number of x elements
         """
-        elements = []
+        rows = []
         for i in range(nx):
+            col = []
             for j in range(ny):
-                element = Element(i * dx, j * dy, 0)
-                elements.append(element)
-        return cls(elements)
+                col.append(Element(i * dx, j * dy, 0))
+            rows.append(col)
+        return cls(rows)
 
 
 def uv_to_θϕ(u, v):

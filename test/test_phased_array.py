@@ -22,7 +22,7 @@ def test_planar():
     λ = 2.0
     nx = 8
     ny = 8
-    a_i = np.ones(nx * ny)
+    a_i = np.ones(nx * ny).reshape((nx, ny))
 
     deg = np.linspace(-90, 90, 300)
 
@@ -32,6 +32,7 @@ def test_planar():
     θθ, ϕϕ = np.meshgrid(θ, ϕ)
 
     array = phased_array.PhasedArray.planar(dx, dy, nx, ny)
+    assert array.Δd_at_θφ(θθ, ϕϕ).shape == (8, 8, 300, 300)
     af = array.array_factor(λ, a_i, θθ, ϕϕ)
 
     assert af.shape == θθ.shape
@@ -112,5 +113,5 @@ def test_array_factor_planar():
     assert abs(arr.array_factor(λ, weights, np.pi / 2, 0)) < 1e-14
 
     weights = arr.weights_at_θφ(λ, np.pi / 4, np.pi / 6)
-    # assert weights.shape == (8, 8)
+    assert weights.shape == (8, 8)
     assert arr.array_factor(λ, weights, np.pi / 4, np.pi / 6) == 64
