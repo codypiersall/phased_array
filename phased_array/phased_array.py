@@ -168,7 +168,40 @@ def uv_to_θϕ(u, v):
     return θ, ϕ
 
 
-uv_to_theta_phi = uv_to_θφ
+uv_to_thetaphi = uv_to_θφ
+
+
+def azel_to_uv(az, el):
+    """Convert azimuth and elevation angles (radians) to uv space"""
+    u = np.cos(el) * np.sin(az)
+    v = np.sin(el)
+    return u, v
+
+
+def uv_to_azel(u, v):
+    """Convert u, v space to az, el in radians"""
+    el = np.arcsin(v)
+    az = np.arctan2(u, (np.sqrt(1 - u * u - v * v)))
+    return az, el
+
+
+def azel_to_θϕ(az, el):
+    """Convert azimuth and elevation angles (in radians) to θ, ϕ (in radians)"""
+    u, v = azel_to_uv(az, el)
+    return uv_to_thetaphi(u, v)
+
+
+def azel_to_thetaphi(az, el):
+    return azel_to_θφ(az, el)
+
+
+def θϕ_to_azel(θ, ϕ):
+    u, v = θφ_to_uv(θ, ϕ)
+    return uv_to_azel(u, v)
+
+
+def thetaphi_to_azel(theta, phi):
+    return θφ_to_azel(theta, phi)
 
 
 def θϕ_to_uv(θ, ϕ):
@@ -179,7 +212,7 @@ def θϕ_to_uv(θ, ϕ):
     return u, v
 
 
-def theta_phi_to_uv(theta, phi):
+def thetaphi_to_uv(theta, phi):
     return θϕ_to_uv(theta, phi)
 
 
