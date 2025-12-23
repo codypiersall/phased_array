@@ -15,8 +15,8 @@ dependencies = ["numpy"]
 [tool.setuptools]
 packages = ["phased_array"]
 
-[tool.setuptools.dynamic]
-version = {attr = "phased_array._version.__version__"}
+[tool.setuptools_scm]
+version_file = "phased_array/_version.py"
 
 [project.optional-dependencies]
 notebook = [
