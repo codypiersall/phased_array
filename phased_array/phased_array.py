@@ -72,6 +72,11 @@ class PhasedArray:
         ri_dot_rhat.shape = (*self.positions.shape, *θ_shape)
         return ri_dot_rhat
 
+    def weights_at_azel(self, λ: float, az: FloatArray, el: FloatArray):
+        """Return the complex weights required at each element to opint at az and el"""
+        θ, ϕ = azel_to_thetaphi(az, el)
+        return self.weights_at_θϕ(λ, θ, ϕ)
+
     def weights_at_θϕ(self, λ: float, θ: FloatArray, ϕ: FloatArray):
         """Return the complex weights required at each element to point at θ and ϕ."""
         # TODO Refactor so that this code isn't duplicated between here and array_factor
@@ -173,6 +178,8 @@ uv_to_thetaphi = uv_to_θφ
 
 def azel_to_uv(az, el):
     """Convert azimuth and elevation angles (radians) to uv space"""
+    az = np.radians(az)
+    el = np.radians(el)
     u = np.cos(el) * np.sin(az)
     v = np.sin(el)
     return u, v
@@ -182,7 +189,7 @@ def uv_to_azel(u, v):
     """Convert u, v space to az, el in radians"""
     el = np.arcsin(v)
     az = np.arctan2(u, (np.sqrt(1 - u * u - v * v)))
-    return az, el
+    return np.degrees(az), np.degrees(el)
 
 
 def azel_to_θϕ(az, el):
